@@ -96,6 +96,11 @@ harness = false
 name = "hcs"
 harness = false
 
+[[bench]]
+name = "hcs-size"
+path = "benches/hcs_size.rs"
+harness = false
+
 [features]
 default = ["parallel"]
 std = [
