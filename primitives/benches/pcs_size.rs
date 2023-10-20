@@ -12,8 +12,8 @@ use jf_primitives::pcs::{
 };
 use jf_utils::test_rng;
 
-const MIN_NUM_VARS: usize = 10;
-const MAX_NUM_VARS: usize = 28;
+const MIN_NUM_VARS: usize = 12;
+const MAX_NUM_VARS: usize = 21;
 
 /// Report the size of a commitment
 pub fn commitment_size<E: Pairing>(num_vars: usize) -> usize {
@@ -48,36 +48,6 @@ pub fn proof_size<E: Pairing>(num_vars: usize) -> usize {
 }
 
 fn main() {
-    println!("\n---------------- Commitment size ----------------");
-
-    println!("\nKZG on BLS12-381: Commitment size");
-    for num_vars in (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2) {
-        println!(
-            "\tnum_vars: {}, size: {} B",
-            num_vars,
-            commitment_size::<Bls12_381>(num_vars)
-        );
-    }
-
-    println!("\nKZG on BN-254: Commitment size");
-    for num_vars in (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2) {
-        println!(
-            "\tnum_vars: {}, size: {} B",
-            num_vars,
-            commitment_size::<Bn254>(num_vars)
-        );
-    }
-
-    println!("\n---------------- Proof size ----------------");
-
-    println!("\nKZG on BLS12-381: Proof size");
-    for num_vars in (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2) {
-        println!(
-            "\tnum_vars: {}, size: {} B",
-            num_vars,
-            proof_size::<Bls12_381>(num_vars)
-        );
-    }
 
     println!("\nKZG on BN-254: Proof size");
     for num_vars in (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2) {

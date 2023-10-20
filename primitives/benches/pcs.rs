@@ -19,8 +19,8 @@ use jf_primitives::pcs::{
 };
 use jf_utils::test_rng;
 
-const MIN_NUM_VARS: usize = 10;
-const MAX_NUM_VARS: usize = 20;
+const MIN_NUM_VARS: usize = 12;
+const MAX_NUM_VARS: usize = 21;
 
 /// Measure the time cost of {commit/open/verify} across a range of num_vars
 pub fn bench_pcs_method<E: Pairing>(
@@ -30,6 +30,7 @@ pub fn bench_pcs_method<E: Pairing>(
     method: impl Fn(&<MultilinearKzgPCS<E> as PolynomialCommitmentScheme>::SRS, usize) -> Duration,
 ) {
     let mut group = c.benchmark_group(msg);
+    group.sample_size(25);
 
     let mut rng = &mut test_rng();
 
