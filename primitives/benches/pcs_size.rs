@@ -13,7 +13,7 @@ use jf_primitives::pcs::{
 use jf_utils::test_rng;
 
 const MIN_NUM_VARS: usize = 10;
-const MAX_NUM_VARS: usize = 24;
+const MAX_NUM_VARS: usize = 28;
 
 /// Report the size of a commitment
 pub fn commitment_size<E: Pairing>(num_vars: usize) -> usize {
