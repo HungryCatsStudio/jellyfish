@@ -14,3 +14,9 @@ repository = "https://github.com/EspressoSystems/jellyfish"
 
 [workspace.dependencies]
 itertools = { version = "0.10.1", default-features = false }
+
+[patch.crates-io]
+ark-ff = { git = "https://github.com/HungryCatsStudio/algebra", branch = "msm-small-patch"}
+ark-ec = { git = "https://github.com/HungryCatsStudio/algebra", branch = "msm-small-patch"}
+ark-poly = { git = "https://github.com/HungryCatsStudio/algebra", branch = "msm-small-patch"}
+ark-serialize = { git = "https://github.com/HungryCatsStudio/algebra", branch = "msm-small-patch"}
