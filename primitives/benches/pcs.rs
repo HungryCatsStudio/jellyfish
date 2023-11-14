@@ -9,17 +9,41 @@ use std::time::{Duration, Instant};
 use ark_bls12_381::Bls12_381;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
-use ark_ff::UniformRand;
-use ark_poly::{DenseMultilinearExtension, MultilinearExtension};
+use ark_ff::{UniformRand, PrimeField, BigInteger};
+use ark_poly::DenseMultilinearExtension;
+use ark_std::rand::Rng;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use jf_primitives::pcs::{
     prelude::{MultilinearKzgPCS, PolynomialCommitmentScheme, MLE},
     StructuredReferenceString,
+    
 };
 use jf_utils::test_rng;
 
 const MIN_NUM_VARS: usize = 10;
 const MAX_NUM_VARS: usize = 20;
+const SMALLNESS: usize = 60; // coefficient bit size that's considered small
+
+/// Produce a random MLE with small coefficients
+fn small_mle<F: PrimeField>(
+    num_vars: usize,
+    rng: &mut impl Rng,
+) -> DenseMultilinearExtension<F> {
+    let num_bits = F::MODULUS_BIT_SIZE as usize;
+    
+    let small_scalars = (0..(1 << num_vars))
+        .map(|_| {
+            let s = F::rand(rng).into_bigint();
+            let mut bits = s.to_bits_le();
+            bits.truncate(SMALLNESS);
+            bits.resize(num_bits, false);
+            let bigint = F::BigInt::from_bits_le(&bits);
+            F::from_bigint(bigint).unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    DenseMultilinearExtension::from_evaluations_vec(num_vars, small_scalars)
+}
 
 /// Measure the time cost of {commit/open/verify} across a range of num_vars
 pub fn bench_pcs_method<E: Pairing>(
@@ -64,7 +88,7 @@ pub fn commit<E: Pairing>(
     let (uni_ck, _uni_vk) = pp.1.trim(num_vars).unwrap();
     let ck = (ml_ck, uni_ck);
 
-    let poly = MLE::from(DenseMultilinearExtension::rand(num_vars, rng));
+    let poly = MLE::from(small_mle(num_vars, rng));
 
     let start = Instant::now();
     let _ = MultilinearKzgPCS::commit(&ck, &poly).unwrap();
@@ -82,7 +106,7 @@ pub fn open<E: Pairing>(
     let (uni_ck, _uni_vk) = pp.1.trim(num_vars).unwrap();
     let ck = (ml_ck, uni_ck);
 
-    let poly = MLE::from(DenseMultilinearExtension::rand(num_vars, rng));
+    let poly = MLE::from(small_mle(num_vars, rng));
     let point: Vec<_> = (0..num_vars).map(|_| E::ScalarField::rand(rng)).collect();
 
     let start = Instant::now();
@@ -102,7 +126,7 @@ pub fn verify<E: Pairing>(
     let ck = (ml_ck, uni_ck);
     let vk = (ml_vk, uni_vk);
 
-    let poly = MLE::from(DenseMultilinearExtension::rand(num_vars, rng));
+    let poly = MLE::from(small_mle(num_vars, rng));
     let point: Vec<_> = (0..num_vars).map(|_| E::ScalarField::rand(rng)).collect();
 
     let commitment = MultilinearKzgPCS::commit(&ck, &poly).unwrap();
