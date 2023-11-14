@@ -20,9 +20,10 @@ use jf_primitives::pcs::{
 };
 use jf_utils::test_rng;
 
+use ark_ec::scalar_mul::variable_base::SMALLNESS; // coefficient bit size that's considered small
+
 const MIN_NUM_VARS: usize = 10;
 const MAX_NUM_VARS: usize = 20;
-const SMALLNESS: usize = 60; // coefficient bit size that's considered small
 
 /// Produce a random MLE with small coefficients
 fn small_mle<F: PrimeField>(
