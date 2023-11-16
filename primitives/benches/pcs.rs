@@ -166,6 +166,8 @@ pub fn bench_msm<E: Pairing>(
 
     let rng = &mut test_rng();
 
+    group.sample_size(20);
+
     for num_points in range {
     
         group.bench_with_input(
