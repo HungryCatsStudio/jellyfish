@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use ark_bls12_381::Bls12_381;
 use ark_bn254::Bn254;
-use ark_ec::pairing::Pairing;
+use ark_ec::{pairing::Pairing, VariableBaseMSM};
 use ark_ff::{UniformRand, PrimeField, BigInteger};
 use ark_poly::DenseMultilinearExtension;
 use ark_std::rand::Rng;
@@ -22,26 +22,39 @@ use jf_utils::test_rng;
 
 use ark_ec::scalar_mul::variable_base::SMALLNESS; // coefficient bit size that's considered small
 
-const MIN_NUM_VARS: usize = 10;
-const MAX_NUM_VARS: usize = 20;
+const MIN_NUM_VARS: usize = 2;
+const MAX_NUM_VARS: usize = 40;
+
+/// Produce a random small scalar
+fn small_scalar<F: PrimeField>(rng: &mut impl Rng) -> F {
+    let s = F::rand(rng).into_bigint();
+    let mut bits = s.to_bits_le();
+
+    bits.truncate(SMALLNESS);
+    bits.resize(F::MODULUS_BIT_SIZE as usize, false);
+    
+    let bigint = F::BigInt::from_bits_le(&bits);
+    
+    F::from_bigint(bigint).unwrap()
+}
+
+fn small_scalar_bigint<F: PrimeField>(rng: &mut impl Rng) -> F::BigInt {
+    let s = F::rand(rng).into_bigint();
+    let mut bits = s.to_bits_le();
+
+    bits.truncate(SMALLNESS);
+    bits.resize(F::MODULUS_BIT_SIZE as usize, false);
+    
+    F::BigInt::from_bits_le(&bits)
+}
 
 /// Produce a random MLE with small coefficients
 fn small_mle<F: PrimeField>(
     num_vars: usize,
     rng: &mut impl Rng,
-) -> DenseMultilinearExtension<F> {
-    let num_bits = F::MODULUS_BIT_SIZE as usize;
-    
+) -> DenseMultilinearExtension<F> {   
     let small_scalars = (0..(1 << num_vars))
-        .map(|_| {
-            let s = F::rand(rng).into_bigint();
-            let mut bits = s.to_bits_le();
-            bits.truncate(SMALLNESS);
-            bits.resize(num_bits, false);
-            let bigint = F::BigInt::from_bits_le(&bits);
-            F::from_bigint(bigint).unwrap()
-        })
-        .collect::<Vec<_>>();
+        .map(|_| small_scalar(rng)).collect::<Vec<_>>();
 
     DenseMultilinearExtension::from_evaluations_vec(num_vars, small_scalars)
 }
@@ -139,6 +152,45 @@ pub fn verify<E: Pairing>(
     start.elapsed()
 }
 
+
+/// Measure the time cost of {commit/open/verify} across a range of num_vars
+pub fn bench_msm<E: Pairing>(
+    c: &mut Criterion,
+    range: impl Iterator<Item = usize>,
+    msg: &str,
+) {
+    let mut group = c.benchmark_group(msg);
+
+    let rng = &mut test_rng();
+
+    for num_points in range {
+    
+        group.bench_with_input(
+            BenchmarkId::from_parameter(num_points),
+            &num_points,
+            |b, num_points| {
+                b.iter_custom(|i| {
+
+                    let points = (0..*num_points).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
+                    let scalars = (0..*num_points).map(|_| small_scalar_bigint::<E::ScalarField>(rng)).collect::<Vec<_>>();
+
+                    let mut time = Duration::from_nanos(0);
+
+                    for _ in 0..i {
+                        let delta = Instant::now();
+                        E::G1::msm_bigint(&points, &scalars);
+                        time += delta.elapsed();
+                    }
+
+                    time
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 fn kzg_254(c: &mut Criterion) {
     bench_pcs_method::<Bn254>(
         c,
@@ -181,12 +233,18 @@ fn kzg_381(c: &mut Criterion) {
     );
 }
 
-criterion_group! {
-    name = pcs_benches;
-    config = Criterion::default();
-    targets =
-        kzg_254,
-        kzg_381
+fn msm_381(c: &mut Criterion) {
+    bench_msm::<Bn254>(
+        c,
+        (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2),
+        &format!("msm_BLS_254_SMALLNESS_{}", SMALLNESS),
+    );
 }
 
-criterion_main!(pcs_benches);
+criterion_group! {
+    name = msm_benches;
+    config = Criterion::default();
+    targets = msm_381
+}
+
+criterion_main!(msm_benches);
