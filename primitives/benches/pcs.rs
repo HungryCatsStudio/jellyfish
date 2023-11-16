@@ -22,8 +22,8 @@ use jf_utils::test_rng;
 
 use ark_ec::scalar_mul::variable_base::SMALLNESS; // coefficient bit size that's considered small
 
-const MIN_NUM_VARS: usize = 2;
-const MAX_NUM_VARS: usize = 40;
+const MIN_NUM_VARS: usize = 10;
+const MAX_NUM_VARS: usize = 22;
 
 /// Produce a random small scalar
 fn small_scalar<F: PrimeField>(rng: &mut impl Rng) -> F {
@@ -67,6 +67,8 @@ pub fn bench_pcs_method<E: Pairing>(
     method: impl Fn(&<MultilinearKzgPCS<E> as PolynomialCommitmentScheme>::SRS, usize) -> Duration,
 ) {
     let mut group = c.benchmark_group(msg);
+
+    group.sample_size(20);
 
     let mut rng = &mut test_rng();
 
@@ -195,19 +197,19 @@ fn kzg_254(c: &mut Criterion) {
     bench_pcs_method::<Bn254>(
         c,
         (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2),
-        "commit_kzg_range_BN_254",
+        &format!("commit_kzg_range_BN_254_SMALLNESS_{}", SMALLNESS),
         commit::<Bn254>,
     );
     bench_pcs_method::<Bn254>(
         c,
         (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2),
-        "open_kzg_range_BN_254",
+        &format!("open_kzg_range_BN_254_SMALLNESS_{}", SMALLNESS),
         open::<Bn254>,
     );
     bench_pcs_method::<Bn254>(
         c,
         (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2),
-        "verify_kzg_range_BN_254",
+        &format!("verify_kzg_range_BN_254_SMALLNESS_{}", SMALLNESS),
         verify::<Bn254>,
     );
 }
@@ -233,18 +235,18 @@ fn kzg_381(c: &mut Criterion) {
     );
 }
 
-fn msm_381(c: &mut Criterion) {
+fn msm_254(c: &mut Criterion) {
     bench_msm::<Bn254>(
         c,
-        (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2),
+        (1..10).map(|i| 1 << i),
         &format!("msm_BLS_254_SMALLNESS_{}", SMALLNESS),
     );
 }
 
 criterion_group! {
-    name = msm_benches;
+    name = benches;
     config = Criterion::default();
-    targets = msm_381
+    targets = kzg_254
 }
 
-criterion_main!(msm_benches);
+criterion_main!(benches);
