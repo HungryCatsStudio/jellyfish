@@ -35,6 +35,7 @@ use ark_std::{
     vec,
     vec::Vec,
     One, Zero,
+    time::Instant,
 };
 use batching::{batch_open_internal, batch_verify_internal};
 use srs::{MultilinearProverParam, MultilinearUniversalParams, MultilinearVerifierParam};
@@ -125,8 +126,13 @@ impl<E: Pairing> PolynomialCommitmentScheme for MultilinearKzgPCS<E> {
         prover_param: impl Borrow<ProverParam<E>>,
         poly: &Self::Polynomial,
     ) -> Result<Self::Commitment, PCSError> {
-        let prover_param = prover_param.borrow();
+
+        let timer_total = Instant::now();
+
         let commit_timer = start_timer!(|| "commit");
+
+        let prover_param = prover_param.borrow();
+
         if prover_param.0.num_vars < poly.num_vars {
             return Err(PCSError::InvalidParameters(format!(
                 "Poly length ({}) exceeds param limit ({})",
@@ -139,14 +145,24 @@ impl<E: Pairing> PolynomialCommitmentScheme for MultilinearKzgPCS<E> {
             .into_iter()
             .map(|x| x.into_bigint())
             .collect();
-        let commitment = E::G1::msm_bigint(
-            &prover_param.0.powers_of_g[ignored].evals,
-            scalars.as_slice(),
-        )
-        .into_affine();
+
+
+        let aux1 = &prover_param.0.powers_of_g[ignored].evals;
+        let aux2 = scalars.as_slice();
+
+        let timer_msm = Instant::now();
+
+        let commitment = E::G1::msm_bigint(aux1, aux2);
+    
+        let time_msm = timer_msm.elapsed();
+
+        commitment.into_affine();
 
         end_timer!(commit_timer);
-        Ok(Commitment(commitment))
+
+        let time_total = timer_total.elapsed();
+        
+        panic!("\n\tTimer total = {:?}\n\tTimer msm = {:?}\n\tMSM percentage: {}\n", time_total, time_msm, (time_msm.as_micros() as f64)/(time_total.as_micros() as f64));
     }
 
     /// Batch commit a list of polynomials.

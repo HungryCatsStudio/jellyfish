@@ -24,6 +24,7 @@ use ark_ec::scalar_mul::variable_base::SMALLNESS; // coefficient bit size that's
 
 const MIN_NUM_VARS: usize = 10;
 const MAX_NUM_VARS: usize = 22;
+const N_VARS: usize = 9;
 
 /// Produce a random small scalar
 fn small_scalar<F: PrimeField>(rng: &mut impl Rng) -> F {
@@ -238,7 +239,7 @@ fn kzg_381(c: &mut Criterion) {
 fn msm_254(c: &mut Criterion) {
     bench_msm::<Bn254>(
         c,
-        (1..10).map(|i| 1 << i),
+        (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2).map(|i| 1 << i),
         &format!("msm_BLS_254_SMALLNESS_{}", SMALLNESS),
     );
 }
@@ -246,7 +247,24 @@ fn msm_254(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = Criterion::default();
-    targets = kzg_254
+    targets = msm_254
 }
 
 criterion_main!(benches);
+
+// fn main() {
+//     println!("Executed: SMALLNESS = {}, n_vars = {}", SMALLNESS, N_VARS);
+
+//     let rng = &mut test_rng();
+    
+//     let pp = MultilinearKzgPCS::<Bn254>::gen_srs_for_testing(rng, N_VARS).unwrap();
+
+//     let (ml_ck, _ml_vk) = pp.0.trim(N_VARS).unwrap();
+//     let (uni_ck, _uni_vk) = pp.1.trim(N_VARS).unwrap();
+//     let ck = (ml_ck, uni_ck);
+
+//     let poly = MLE::from(small_mle(N_VARS, rng));
+
+//     let start = Instant::now();
+//     let _ = MultilinearKzgPCS::commit(&ck, &poly).unwrap();
+// }
