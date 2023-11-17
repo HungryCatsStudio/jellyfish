@@ -22,8 +22,8 @@ use jf_utils::test_rng;
 
 use ark_ec::scalar_mul::variable_base::SMALLNESS; // coefficient bit size that's considered small
 
-const MIN_NUM_VARS: usize = 10;
-const MAX_NUM_VARS: usize = 22;
+const MIN_NUM_VARS: usize = 17;
+const MAX_NUM_VARS: usize = 18;
 const N_VARS: usize = 9;
 
 /// Produce a random small scalar
@@ -166,32 +166,28 @@ pub fn bench_msm<E: Pairing>(
 
     let rng = &mut test_rng();
 
-    group.sample_size(20);
-
     for num_points in range {
-    
+
         group.bench_with_input(
             BenchmarkId::from_parameter(num_points),
             &num_points,
             |b, num_points| {
-                b.iter_custom(|i| {
+                let points = (0..*num_points).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
+                let scalars = (0..*num_points).map(|_| small_scalar_bigint::<E::ScalarField>(rng)).collect::<Vec<_>>();
 
-                    let points = (0..*num_points).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
-                    let scalars = (0..*num_points).map(|_| small_scalar_bigint::<E::ScalarField>(rng)).collect::<Vec<_>>();
-
+                b.iter_custom(|n_iters| {
                     let mut time = Duration::from_nanos(0);
 
-                    for _ in 0..i {
+                    for _ in 0..n_iters {
                         let delta = Instant::now();
                         E::G1::msm_bigint(&points, &scalars);
                         time += delta.elapsed();
                     }
-
                     time
                 });
             },
         );
-    }
+    }   
 
     group.finish();
 }
@@ -238,18 +234,18 @@ fn kzg_381(c: &mut Criterion) {
     );
 }
 
-fn msm_254(c: &mut Criterion) {
-    bench_msm::<Bn254>(
+fn msm(c: &mut Criterion) {
+    bench_msm::<Bls12_381>(
         c,
         (MIN_NUM_VARS..MAX_NUM_VARS).step_by(2).map(|i| 1 << i),
-        &format!("msm_BLS_254_SMALLNESS_{}", SMALLNESS),
+        &format!("msm_BLS-381_SMALLNESS_{}", SMALLNESS),
     );
 }
 
 criterion_group! {
     name = benches;
     config = Criterion::default();
-    targets = msm_254
+    targets = msm
 }
 
 criterion_main!(benches);
